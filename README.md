@@ -1,2 +1,3 @@
 # test_python
-scripts to test
+# scripts to test
+# pip install pygame
