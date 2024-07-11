@@ -1,4 +1,4 @@
-# pip install tkinter pygetwindow pyautogui opencv-python
+# pip install pygetwindow pyautogui opencv-python numpy
 
 import tkinter as tk  # Importa o módulo tkinter para criar a interface gráfica do usuário (GUI).
 from tkinter import filedialog, messagebox  # Importa componentes específicos do tkinter para diálogos de arquivos e mensagens.
