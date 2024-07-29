@@ -1,3 +1,5 @@
+# pip install pillow
+
 import os
 import shutil
 from tkinter import Tk, Label, Button, filedialog, Listbox, SINGLE, PhotoImage
