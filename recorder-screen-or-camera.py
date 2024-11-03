@@ -1,5 +1,5 @@
 # pip install tkinter pygetwindow pyautogui opencv-python
-
+# -*- coding: utf-8 -*-
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import pygetwindow as gw
