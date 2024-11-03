@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # Importação das bibliotecas necessárias
 import tkinter as tk  # Interface gráfica
 from tkinter import filedialog, messagebox  # Diálogo e mensagens
