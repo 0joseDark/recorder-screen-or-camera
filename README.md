@@ -30,7 +30,26 @@ python qt_recorder.py
 ```
 
 * No macOS, se a janela ficar preta ao gravar ecrã, vai a **System Settings → Privacy & Security → Screen Recording** e autoriza o Python/Terminal.
+---
+Feito ✅ — atualizei o script, tem agora:
 
+* seleção de região por “arrastar para desenhar” (overlay transparente, ecrã inteiro)
+* pré-visualização ao vivo (ativável)
+* escolha de resolução (redimensiona na captura) e bitrate (aplicado no passo ffmpeg)
+* áudio do microfone com `sounddevice` + `soundfile`, e mux/encode final com `ffmpeg` (opcional re-encode)
 
+### Instalar dependências
+
+```bash
+pip install PyQt6 opencv-python mss numpy pygetwindow sounddevice soundfile
+# Também precisas do ffmpeg instalado no sistema (acessível como comando "ffmpeg")
+```
+
+### Como funciona (resumo)
+
+* O vídeo é gravado primeiro para um ficheiro temporário (OpenCV).
+* O áudio (se ativado) é gravado para WAV temporário.
+* No fim, o `ffmpeg` faz o mux (e opcionalmente re-encode para aplicar o bitrate escolhido, com `libx264 + aac`).
+* Podes gravar: câmara, ecrã inteiro, janela (quando suportado) ou região arrastada.
 
  
