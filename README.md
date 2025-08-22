@@ -154,5 +154,353 @@ ffmpeg -y -i video_temp.mp4 -i audio_temp.wav -c:v libx264 -b:v 6000k -pix_fmt y
 * **macOS** → `brew install ffmpeg`.
 
 ---
+Perfeito 👍 vamos expandir o exemplo Android em **Java** para ficar mais próximo do que tinhas no Qt/Python:
+
+* **Escolher origem**:
+
+  * *Ecrã inteiro* (via `MediaProjection`)
+  * *Câmara frontal ou traseira* (via `Camera2` + `MediaRecorder`)
+
+* **Pré-visualização ao vivo**:
+
+  * Para a **câmara**, usamos um `SurfaceView` que mostra a imagem em tempo real.
+  * Para o **ecrã**, não há preview (porque estamos a capturar a própria tela).
+
+* **Configurações de resolução e bitrate**:
+
+  * Caixas de seleção (`Spinner`) para escolher resolução (`1920x1080`, `1280x720`, etc.) e bitrate (`2000k`, `4000k`, `8000k`).
+
+---
+
+# 📱 Código Expandido
+
+### `AndroidManifest.xml`
+
+Permissões necessárias:
+
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO"/>
+<uses-permission android:name="android.permission.CAMERA"/>
+<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+```
+
+---
+
+### `activity_main.xml`
+
+Layout com botões + seletores:
+
+```xml
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:gravity="center">
+
+    <Spinner
+        android:id="@+id/modeSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:entries="@array/mode_options"/>
+
+    <Spinner
+        android:id="@+id/resolutionSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:entries="@array/resolution_options"/>
+
+    <Spinner
+        android:id="@+id/bitrateSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:entries="@array/bitrate_options"/>
+
+    <SurfaceView
+        android:id="@+id/previewSurface"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:layout_marginTop="16dp"
+        android:background="#000"/>
+
+    <Button
+        android:id="@+id/startBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Iniciar Gravação"/>
+
+    <Button
+        android:id="@+id/stopBtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Parar Gravação"/>
+</LinearLayout>
+```
+
+---
+
+### `res/values/strings.xml`
+
+Opções de seleção:
+
+```xml
+<string-array name="mode_options">
+    <item>Ecrã</item>
+    <item>Câmara Frontal</item>
+    <item>Câmara Traseira</item>
+</string-array>
+
+<string-array name="resolution_options">
+    <item>1920x1080</item>
+    <item>1280x720</item>
+    <item>640x480</item>
+</string-array>
+
+<string-array name="bitrate_options">
+    <item>2000k</item>
+    <item>4000k</item>
+    <item>8000k</item>
+</string-array>
+```
+
+---
+
+### `MainActivity.java`
+
+```java
+package com.example.recorderapp;
+
+import android.Manifest;
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.SurfaceTexture;
+import android.hardware.camera2.*;
+import android.media.MediaRecorder;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
+import android.os.Bundle;
+import android.os.Environment;
+import android.util.Size;
+import android.view.*;
+import android.widget.*;
+import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+
+public class MainActivity extends Activity {
+
+    private static final int SCREEN_RECORD_REQUEST_CODE = 1000;
+    private static final int REQUEST_PERMS = 2000;
+
+    private Spinner modeSpinner, resolutionSpinner, bitrateSpinner;
+    private Button startBtn, stopBtn;
+    private SurfaceView previewSurface;
+
+    private MediaProjectionManager projectionManager;
+    private MediaProjection mediaProjection;
+    private MediaRecorder mediaRecorder;
+    private CameraDevice cameraDevice;
+    private CameraCaptureSession captureSession;
+
+    private String videoPath;
+    private boolean isRecording = false;
+
+    private int outWidth = 1280, outHeight = 720, outBitrate = 4000000;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        modeSpinner = findViewById(R.id.modeSpinner);
+        resolutionSpinner = findViewById(R.id.resolutionSpinner);
+        bitrateSpinner = findViewById(R.id.bitrateSpinner);
+        startBtn = findViewById(R.id.startBtn);
+        stopBtn = findViewById(R.id.stopBtn);
+        previewSurface = findViewById(R.id.previewSurface);
+
+        projectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+
+        ActivityCompat.requestPermissions(this, new String[]{
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+        }, REQUEST_PERMS);
+
+        startBtn.setOnClickListener(v -> startRecording());
+        stopBtn.setOnClickListener(v -> stopRecording());
+    }
+
+    private void updateSettings() {
+        // resolução
+        String res = (String) resolutionSpinner.getSelectedItem();
+        String[] parts = res.split("x");
+        outWidth = Integer.parseInt(parts[0]);
+        outHeight = Integer.parseInt(parts[1]);
+
+        // bitrate
+        String br = (String) bitrateSpinner.getSelectedItem();
+        outBitrate = Integer.parseInt(br.replace("k", "")) * 1000;
+    }
+
+    private void initRecorder() throws IOException {
+        updateSettings();
+        mediaRecorder = new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+
+        File outFile = new File(Environment.getExternalStorageDirectory(),
+                "recorded_" + System.currentTimeMillis() + ".mp4");
+        videoPath = outFile.getAbsolutePath();
+        mediaRecorder.setOutputFile(videoPath);
+
+        mediaRecorder.setVideoSize(outWidth, outHeight);
+        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        mediaRecorder.setVideoEncodingBitRate(outBitrate);
+        mediaRecorder.setVideoFrameRate(30);
+
+        mediaRecorder.prepare();
+    }
+
+    private void startRecording() {
+        String mode = (String) modeSpinner.getSelectedItem();
+        if (mode.equals("Ecrã")) {
+            startScreenCapture();
+        } else {
+            startCameraCapture(mode.equals("Câmara Frontal"));
+        }
+    }
+
+    private void startScreenCapture() {
+        if (mediaProjection == null) {
+            Intent intent = projectionManager.createScreenCaptureIntent();
+            startActivityForResult(intent, SCREEN_RECORD_REQUEST_CODE);
+        } else {
+            try {
+                initRecorder();
+                mediaProjection.createVirtualDisplay("ScreenRecorder",
+                        outWidth, outHeight, getResources().getDisplayMetrics().densityDpi,
+                        0, mediaRecorder.getSurface(), null, null);
+                mediaRecorder.start();
+                isRecording = true;
+                Toast.makeText(this, "Gravação do ecrã iniciada", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void startCameraCapture(boolean front) {
+        try {
+            initRecorder();
+            String cameraId = getCameraId(front);
+            CameraManager cm = (CameraManager) getSystemService(CAMERA_SERVICE);
+            cm.openCamera(cameraId, new CameraDevice.StateCallback() {
+                @Override
+                public void onOpened(CameraDevice camera) {
+                    cameraDevice = camera;
+                    try {
+                        Surface recorderSurface = mediaRecorder.getSurface();
+                        Surface previewSurf = previewSurface.getHolder().getSurface();
+                        CaptureRequest.Builder builder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+                        builder.addTarget(recorderSurface);
+                        builder.addTarget(previewSurf);
+
+                        cameraDevice.createCaptureSession(Arrays.asList(recorderSurface, previewSurf),
+                                new CameraCaptureSession.StateCallback() {
+                                    @Override
+                                    public void onConfigured(CameraCaptureSession session) {
+                                        captureSession = session;
+                                        try {
+                                            session.setRepeatingRequest(builder.build(), null, null);
+                                            mediaRecorder.start();
+                                            isRecording = true;
+                                            Toast.makeText(MainActivity.this, "Gravação da câmara iniciada", Toast.LENGTH_SHORT).show();
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onConfigureFailed(CameraCaptureSession session) {}
+                                }, null);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void onDisconnected(CameraDevice camera) {}
+                @Override
+                public void onError(CameraDevice camera, int error) {}
+            }, null);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getCameraId(boolean front) throws CameraAccessException {
+        CameraManager cm = (CameraManager) getSystemService(CAMERA_SERVICE);
+        for (String id : cm.getCameraIdList()) {
+            CameraCharacteristics chars = cm.getCameraCharacteristics(id);
+            Integer facing = chars.get(CameraCharacteristics.LENS_FACING);
+            if (front && facing == CameraCharacteristics.LENS_FACING_FRONT)
+                return id;
+            if (!front && facing == CameraCharacteristics.LENS_FACING_BACK)
+                return id;
+        }
+        return cm.getCameraIdList()[0];
+    }
+
+    private void stopRecording() {
+        if (!isRecording) return;
+        mediaRecorder.stop();
+        mediaRecorder.reset();
+        if (captureSession != null) {
+            captureSession.close();
+        }
+        if (cameraDevice != null) {
+            cameraDevice.close();
+        }
+        if (mediaProjection != null) {
+            mediaProjection.stop();
+        }
+        isRecording = false;
+        Toast.makeText(this, "Gravação guardada em: " + videoPath, Toast.LENGTH_LONG).show();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == SCREEN_RECORD_REQUEST_CODE) {
+            if (resultCode == RESULT_OK && data != null) {
+                mediaProjection = projectionManager.getMediaProjection(resultCode, data);
+                startScreenCapture();
+            } else {
+                Toast.makeText(this, "Permissão negada!", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+}
+```
+
+---
+
+# 🚀 O que este código faz
+
+* **Modo Ecrã** → usa `MediaProjection` + `MediaRecorder`.
+* **Modo Câmara Frontal/Traseira** → usa `Camera2` + `MediaRecorder` + `SurfaceView` para preview.
+* **Resolução e bitrate** → escolhidos via `Spinner` antes de iniciar.
+
+---
+
+
+
 
  
