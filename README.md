@@ -64,8 +64,9 @@ Para poderes juntar áudio + vídeo e aplicar **bitrate/resolução profissional
 1. Vai ao site oficial: [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
    → escolhe **Windows builds** (por ex. [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) ou [BtbN builds](https://github.com/BtbN/FFmpeg-Builds/releases))
 2. Faz download do **ZIP estático** (ex: `ffmpeg-release-full.7z` ou `ffmpeg-release-essentials.zip`).
-3. Extrai o ZIP (por exemplo para `C:\\ffmpeg`).
-4. Dentro de `C:\\ffmpeg\\bin` está o executável `ffmpeg.exe`.
+  - https://github.com/BtbN/FFmpeg-Builds/releases
+4. Extrai o ZIP (por exemplo para `C:\\ffmpeg`).
+5. Dentro de `C:\\ffmpeg\\bin` está o executável `ffmpeg.exe`.
 
 ### Adicionar ao PATH
 
