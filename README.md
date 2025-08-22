@@ -8,7 +8,7 @@
  ---
  **Qt (PyQt6)**
 
-### O que tens agora
+###  Agora tem:
 
 * **Modos de captura:** Câmara USB, Ecrã inteiro, ou **Janela específica** (quando suportado pelo `pygetwindow`).
 * **Cross-platform:** Windows 10, Ubuntu e macOS (no macOS lembra-te de autorizar *Screen Recording* em *Privacy & Security*).
