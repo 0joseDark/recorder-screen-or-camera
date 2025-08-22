@@ -155,7 +155,7 @@ ffmpeg -y -i video_temp.mp4 -i audio_temp.wav -c:v libx264 -b:v 6000k -pix_fmt y
 
 ---
 
-Exemplo Android em **Java** para ficar mais próximo do que tinhas no Qt/Python:
+Exemplo Android em **Java** :
 
 * **Escolher origem**:
 
